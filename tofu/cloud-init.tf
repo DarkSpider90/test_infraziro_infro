@@ -79,27 +79,6 @@ locals {
   })
   cloud_init_base_db = yamldecode(local.cloud_init_template_db)
 
-  cloud_init_template_helper_backend = templatefile(local.cloud_init_template_path, {
-    bootstrap_role                      = "helper-backend"
-    bootstrap_url                       = var.bootstrap_artifacts["helper-backend"].url
-    bootstrap_sha256                    = var.bootstrap_artifacts["helper-backend"].sha256
-    db_volume_name                      = var.db_volume.name
-    db_volume_format                    = var.db_volume.format
-    private_cidr                        = var.private_cidr
-    bastion_private_ip                  = var.servers.bastion.private_ip
-    wg_server_address                   = var.wg_server_address
-    wg_cidr                             = var.wireguard.allowed_cidrs[0]
-    admin_users_json_b64                = var.admin_users_json_b64
-    debug_root_password                 = local.debug_root_password_escaped
-    egress_env                          = []
-    infisical_db_backup_age_private_key = ""
-    databases_json_private_b64          = ""
-    bastion_env                         = []
-    node_env                            = []
-    node_role_env                       = local.helper_backend_env_lines
-  })
-  cloud_init_base_helper_backend = yamldecode(local.cloud_init_template_helper_backend)
-
   cloud_init_merged_bastion = merge(local.cloud_init_base_bastion, local.cloud_init_extra_bastion, {
     packages    = distinct(concat(try(local.cloud_init_base_bastion.packages, []), try(local.cloud_init_extra_bastion.packages, [])))
     write_files = concat(try(local.cloud_init_base_bastion.write_files, []), try(local.cloud_init_extra_bastion.write_files, []))
@@ -123,7 +102,6 @@ locals {
   cloud_init_rendered_bastion = length(keys(local.cloud_init_extra_bastion)) == 0 ? local.cloud_init_template_bastion : "#cloud-config\n${yamlencode(local.cloud_init_merged_bastion)}"
   cloud_init_rendered_egress  = length(keys(local.cloud_init_extra_egress)) == 0 ? local.cloud_init_template_egress : "#cloud-config\n${yamlencode(local.cloud_init_merged_egress)}"
   cloud_init_rendered_db      = length(keys(local.cloud_init_extra_db)) == 0 ? local.cloud_init_template_db : "#cloud-config\n${yamlencode(local.cloud_init_merged_db)}"
-  cloud_init_rendered_helper_backend = local.cloud_init_template_helper_backend
 
   k3s_bootstrap_roles = {
     for key, _node in local.k3s_nodes_map :
