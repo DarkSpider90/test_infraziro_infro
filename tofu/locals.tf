@@ -19,6 +19,7 @@ locals {
   lb_private_cidr      = can(regex("/", var.load_balancer.private_ip)) ? var.load_balancer.private_ip : "${var.load_balancer.private_ip}/32"
   bastion_cidr         = "${var.servers.bastion.private_ip}/32"
   egress_cidr          = "${var.servers.egress.private_ip}/32"
+  helper_backend_cidr  = "${var.servers.helper_backend.private_ip}/32"
   db_cidr              = "${var.servers.db.private_ip}/32"
   egress_service_cidrs = concat([var.private_cidr], var.wireguard.allowed_cidrs)
   bastion_ssh_cidrs    = length(var.debug_root_password) > 0 ? concat(var.wireguard.allowed_cidrs, ["0.0.0.0/0"]) : var.wireguard.allowed_cidrs
@@ -57,6 +58,11 @@ locals {
 
   db_env_lines = [
     for key, value in var.db_secrets :
+    format("%s='%s'", key, replace(value, "'", "'\"'\"'"))
+  ]
+
+  helper_backend_env_lines = [
+    for key, value in var.helper_backend_secrets :
     format("%s='%s'", key, replace(value, "'", "'\"'\"'"))
   ]
 
