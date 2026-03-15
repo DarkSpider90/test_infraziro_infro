@@ -17,10 +17,6 @@ servers:
     private_ip: 10.10.0.11
     public_ipv4: true
     public_ipv6: true
-  helper_backend:
-    private_ip: 10.10.0.12
-    public_ipv4: true
-    public_ipv6: true
   db:
     private_ip: 10.10.0.30
     public_ipv4: false
