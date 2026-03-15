@@ -287,14 +287,19 @@ def main() -> int:
         if "bastion" in internal_fqdns and not bastion_public_ip:
             print("bastion-public-ip is required when bastion FQDN is provided.", file=sys.stderr)
             return 1
-        if "kubernetes" in internal_fqdns and not egress_public_ip:
-            print("Warning: kubernetes FQDN set but egress-public-ip not provided; using egress private IP.")
+        public_egress_services = {"grafana", "loki", "infisical", "argocd", "kubernetes"}
+        if any(key in internal_fqdns for key in public_egress_services) and not egress_public_ip:
+            print(
+                "egress-public-ip is required when Grafana/Loki/Infisical/ArgoCD/Kubernetes FQDNs are provided.",
+                file=sys.stderr,
+            )
+            return 1
         service_ip_map = {
             "bastion": bastion_public_ip or bastion_private_ip,
-            "grafana": egress_ip,
-            "loki": egress_ip,
-            "infisical": egress_ip,
-            "argocd": egress_ip,
+            "grafana": egress_public_ip or egress_ip,
+            "loki": egress_public_ip or egress_ip,
+            "infisical": egress_public_ip or egress_ip,
+            "argocd": egress_public_ip or egress_ip,
             "kubernetes": egress_public_ip or egress_ip,
             "db": db_ip,
         }
@@ -325,13 +330,23 @@ def main() -> int:
         return 0
 
     deduped: dict[str, dict] = {}
+    conflicting_names: list[str] = []
     for record in records:
         name = record["name"]
         if name in deduped:
             prev = deduped[name]
             if prev.get("content") != record.get("content") or bool(prev.get("proxied")) != bool(record.get("proxied")):
-                print(f"Warning: duplicate DNS record '{name}' specified; last write wins.", file=sys.stderr)
+                conflicting_names.append(name)
+                continue
         deduped[name] = record
+    if conflicting_names:
+        joined = ", ".join(sorted(set(conflicting_names)))
+        print(
+            f"Conflicting DNS record definitions detected for: {joined}. "
+            "Resolve duplicate hostnames before running DNS sync.",
+            file=sys.stderr,
+        )
+        return 1
     records = list(deduped.values())
 
     try:

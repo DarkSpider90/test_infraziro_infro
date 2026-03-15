@@ -110,7 +110,7 @@ resource "hcloud_firewall" "egress" {
     direction  = "in"
     protocol   = "tcp"
     port       = "80"
-    source_ips = local.egress_service_cidrs
+    source_ips = ["0.0.0.0/0", "::/0"]
   }
 
   rule {
@@ -123,7 +123,7 @@ resource "hcloud_firewall" "egress" {
     direction  = "in"
     protocol   = "tcp"
     port       = "443"
-    source_ips = local.egress_service_cidrs
+    source_ips = ["0.0.0.0/0", "::/0"]
   }
 
   rule {
