@@ -68,14 +68,12 @@ destroy_targets_prefix hcloud_volume_attachment
 destroy_targets \
   hcloud_server.bastion \
   hcloud_server.egress \
-  hcloud_server.helper_backend \
   hcloud_server.db
 destroy_targets_prefix hcloud_server.k3s
 
 destroy_targets \
   hcloud_firewall.bastion \
   hcloud_firewall.egress \
-  hcloud_firewall.helper_backend \
   hcloud_firewall.k3s_server \
   hcloud_firewall.k3s_agent \
   hcloud_firewall.db
