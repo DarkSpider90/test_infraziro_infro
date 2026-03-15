@@ -155,35 +155,6 @@ resource "hcloud_firewall" "egress" {
   }
 }
 
-resource "hcloud_firewall" "helper_backend" {
-  count = var.helper_backend_enabled ? 1 : 0
-  name = "${var.name_prefix}-helper-backend-fw"
-
-  apply_to {
-    label_selector = format("project=%s,environment=%s,role=helper-backend", var.project, var.environment)
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "22"
-    source_ips = concat(var.wireguard.allowed_cidrs, [local.bastion_cidr])
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "icmp"
-    source_ips = concat(var.wireguard.allowed_cidrs, [local.bastion_cidr, var.private_cidr])
-  }
-}
-
 resource "hcloud_firewall" "k3s_server" {
   name = "${var.name_prefix}-k3s-server-fw"
 
@@ -398,40 +369,6 @@ resource "hcloud_server" "egress" {
     project     = var.project
     environment = var.environment
     role        = "egress"
-  }
-
-  depends_on = [hcloud_network_subnet.main]
-}
-
-resource "hcloud_server" "helper_backend" {
-  count       = var.helper_backend_enabled ? 1 : 0
-  name        = "${var.name_prefix}-helper-backend"
-  image       = var.server_image
-  server_type = var.helper_backend_server_type
-  location    = var.location
-
-  public_net {
-    ipv4_enabled = var.servers.helper_backend.public_ipv4
-    ipv6_enabled = var.servers.helper_backend.public_ipv6
-  }
-
-  network {
-    network_id = hcloud_network.main.id
-    ip         = var.servers.helper_backend.private_ip
-  }
-
-  ssh_keys           = local.ssh_key_ids
-  placement_group_id = local.pg_main_id
-  user_data          = local.cloud_init_rendered_helper_backend
-
-  lifecycle {
-    ignore_changes = [user_data]
-  }
-
-  labels = {
-    project     = var.project
-    environment = var.environment
-    role        = "helper-backend"
   }
 
   depends_on = [hcloud_network_subnet.main]
