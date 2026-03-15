@@ -255,7 +255,6 @@ def main() -> int:
     parser.add_argument("--lb-ip", required=True)
     parser.add_argument("--bastion-public-ip", default="")
     parser.add_argument("--egress-public-ip", default="")
-    parser.add_argument("--helper-public-ip", default="")
     args = parser.parse_args()
 
     token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
@@ -270,9 +269,7 @@ def main() -> int:
     bastion_public_ip = args.bastion_public_ip.strip()
     egress_ip = str(servers.get("egress", {}).get("private_ip", "")).strip()
     egress_public_ip = args.egress_public_ip.strip()
-    helper_public_ip = args.helper_public_ip.strip()
     db_ip = str(servers.get("db", {}).get("private_ip", "")).strip()
-    helper_backend_fqdn = os.getenv("HELPER_BACKEND_FQDN", "").strip()
 
     try:
         internal_fqdns = resolve_internal_fqdns()
@@ -322,12 +319,6 @@ def main() -> int:
         ip = str(entry.get("ip", "")).strip()
         if hostname and ip:
             records.append({"name": hostname, "content": ip, "proxied": False})
-
-    if helper_backend_fqdn:
-        if not helper_public_ip:
-            print("helper-public-ip is required when HELPER_BACKEND_FQDN is provided.", file=sys.stderr)
-            return 1
-        records.append({"name": helper_backend_fqdn, "content": helper_public_ip, "proxied": False})
 
     if not records:
         print("No FQDNs provided; skipping DNS sync.")
