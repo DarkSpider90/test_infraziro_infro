@@ -207,7 +207,6 @@ fi
 mkdir -p /etc/infrazero
 cat > /etc/infrazero/network.env <<EOF
 PRIVATE_CIDR=${PRIVATE_CIDR:-}
-BASTION_PRIVATE_IP=${BASTION_PRIVATE_IP:-}
 WG_CIDR=${WG_CIDR:-}
 EOF
 chmod 600 /etc/infrazero/network.env
@@ -351,11 +350,6 @@ print(str(gw))
 PY
 ) || exit 0
 
-wg_next_hop="${BASTION_PRIVATE_IP:-$private_gw}"
-if [ -z "$wg_next_hop" ]; then
-  exit 0
-fi
-
 priv_if=$(ip -4 route get "$private_gw" 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
 if [ -z "$priv_if" ]; then
   priv_if=$(python3 - <<'PY'
@@ -390,7 +384,7 @@ sysctl -w "net.ipv4.conf.${priv_if}.rp_filter=0" >/dev/null 2>&1 || true
 
 /usr/local/sbin/infrazero-private-route.sh || true
 
-ip route replace "$WG_CIDR" via "$wg_next_hop" dev "$priv_if" onlink metric 50 || true
+ip route replace "$WG_CIDR" via "$private_gw" dev "$priv_if" onlink metric 50 || true
 EOF
 
 chmod +x /usr/local/sbin/infrazero-wg-route.sh
