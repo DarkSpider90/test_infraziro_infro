@@ -31,10 +31,11 @@
     "server_image": { "type": "string", "minLength": 1 },
     "servers": {
       "type": "object",
-      "required": ["bastion", "egress", "db"],
+      "required": ["bastion", "egress", "helper_backend", "db"],
       "properties": {
         "bastion": { "$ref": "#/$defs/server" },
         "egress": { "$ref": "#/$defs/server" },
+        "helper_backend": { "$ref": "#/$defs/server" },
         "db": { "$ref": "#/$defs/server" }
       },
       "additionalProperties": true
