@@ -847,7 +847,6 @@ def main() -> int:
     if cloudflare_api_token:
         egress_secrets["CLOUDFLARE_API_TOKEN"] = cloudflare_api_token
 
-    bastion_fqdn = internal_services.get("bastion", "")
     infisical_fqdn = internal_services.get("infisical", "")
     grafana_fqdn = internal_services.get("grafana", "")
     loki_fqdn = internal_services.get("loki", "")
@@ -901,6 +900,7 @@ def main() -> int:
     infisical_spc_namespace = optional_env("INFISICAL_SPC_NAMESPACE")
     gh_infra_repo = optional_env("GH_INFRA_REPO")
     gh_gitops_repo = optional_env("GH_GITOPS_REPO")
+
     def resolve_repo_url(repo: str, owner: str) -> tuple[str, list[str]]:
         if not repo:
             return "", []

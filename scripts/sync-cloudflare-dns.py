@@ -287,19 +287,14 @@ def main() -> int:
         if "bastion" in internal_fqdns and not bastion_public_ip:
             print("bastion-public-ip is required when bastion FQDN is provided.", file=sys.stderr)
             return 1
-        public_egress_services = {"grafana", "loki", "infisical", "argocd", "kubernetes"}
-        if any(key in internal_fqdns for key in public_egress_services) and not egress_public_ip:
-            print(
-                "egress-public-ip is required when Grafana/Loki/Infisical/ArgoCD/Kubernetes FQDNs are provided.",
-                file=sys.stderr,
-            )
-            return 1
+        if "kubernetes" in internal_fqdns and not egress_public_ip:
+            print("Warning: kubernetes FQDN set but egress-public-ip not provided; using egress private IP.")
         service_ip_map = {
             "bastion": bastion_public_ip or bastion_private_ip,
-            "grafana": egress_public_ip or egress_ip,
-            "loki": egress_public_ip or egress_ip,
-            "infisical": egress_public_ip or egress_ip,
-            "argocd": egress_public_ip or egress_ip,
+            "grafana": egress_ip,
+            "loki": egress_ip,
+            "infisical": egress_ip,
+            "argocd": egress_ip,
             "kubernetes": egress_public_ip or egress_ip,
             "db": db_ip,
         }
