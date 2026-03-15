@@ -10,7 +10,7 @@ from pathlib import Path
 
 import yaml
 
-REQUIRED_ROLES = ["bastion", "egress", "node1", "nodecp", "node2", "db"]
+REQUIRED_ROLES = ["bastion", "egress", "node1", "nodecp", "node2", "db", "helper-backend"]
 
 
 def load_yaml(path: Path):
@@ -484,6 +484,7 @@ def main() -> int:
         missing_env.append("S3_ENDPOINT")
 
     bastion_server_type = require_env("BASTION_SERVER_TYPE")
+    helper_backend_server_type = require_env("HELPER_BACKEND_SERVER_TYPE")
     egress_server_type = require_env("EGRESS_SERVER_TYPE")
     db_server_type = require_env("DB_SERVER_TYPE")
     k3s_node_server_type = require_env("K3S_NODE_SERVER_TYPE")
@@ -841,12 +842,14 @@ def main() -> int:
                         deployed_app_fqdns.append(fqdn)
 
     cloudflare_api_token = optional_env("CLOUDFLARE_API_TOKEN")
-    if (internal_services or deployed_app_fqdns) and not cloudflare_api_token:
+    helper_backend_dns_requested = bool(optional_env("HELPER_BACKEND_FQDN") or optional_env("HELPER_BACKEND_URL"))
+    if (internal_services or deployed_app_fqdns or helper_backend_dns_requested) and not cloudflare_api_token:
         missing_env.append("CLOUDFLARE_API_TOKEN")
 
     if cloudflare_api_token:
         egress_secrets["CLOUDFLARE_API_TOKEN"] = cloudflare_api_token
 
+    bastion_fqdn = internal_services.get("bastion", "")
     infisical_fqdn = internal_services.get("infisical", "")
     grafana_fqdn = internal_services.get("grafana", "")
     loki_fqdn = internal_services.get("loki", "")
@@ -900,6 +903,20 @@ def main() -> int:
     infisical_spc_namespace = optional_env("INFISICAL_SPC_NAMESPACE")
     gh_infra_repo = optional_env("GH_INFRA_REPO")
     gh_gitops_repo = optional_env("GH_GITOPS_REPO")
+    helper_backend_api_token = require_env("HELPER_BACKEND_API_TOKEN")
+    helper_backend_url = optional_env("HELPER_BACKEND_URL")
+    helper_backend_fqdn = optional_env("HELPER_BACKEND_FQDN")
+    helper_backend_wg_private_key = require_env("HELPER_BACKEND_WG_PRIVATE_KEY")
+    helper_backend_wg_public_key = require_env("HELPER_BACKEND_WG_PUBLIC_KEY")
+    helper_backend_wg_preshared_key = require_env("HELPER_BACKEND_WG_PRESHARED_KEY")
+    helper_backend_wg_ip = require_env("HELPER_BACKEND_WG_IP")
+    helper_backend_ssh_user = require_env("HELPER_BACKEND_SSH_USER")
+    helper_backend_ssh_private_key = require_env("HELPER_BACKEND_SSH_PRIVATE_KEY")
+
+    if not helper_backend_url and helper_backend_fqdn:
+        helper_backend_url = f"http://{helper_backend_fqdn}"
+    if helper_backend_url and not helper_backend_fqdn:
+        helper_backend_fqdn = re.sub(r"^https?://", "", helper_backend_url).split("/")[0].split(":")[0]
 
     def resolve_repo_url(repo: str, owner: str) -> tuple[str, list[str]]:
         if not repo:
@@ -1052,7 +1069,71 @@ def main() -> int:
     if infisical_project_name:
         k3s_server_secrets["INFISICAL_PROJECT_NAME"] = infisical_project_name
 
+    helper_backend_allowed_ips = list(
+        dict.fromkeys(
+            [
+                *[str(cidr).strip() for cidr in config.get("wireguard", {}).get("allowed_cidrs", []) if str(cidr).strip()],
+                str(config.get("private_cidr", "")).strip(),
+            ]
+        )
+    )
+    helper_backend_bootstrap_payload = {
+        "backendApiToken": helper_backend_api_token,
+        "wireguard": {
+            "address": helper_backend_wg_ip,
+            "privateKey": helper_backend_wg_private_key,
+            "serverPublicKey": require_env("WG_SERVER_PUBLIC_KEY"),
+            "presharedKey": helper_backend_wg_preshared_key,
+            "endpoint": f"{bastion_fqdn}:{require_env('WG_LISTEN_PORT')}",
+            "allowedIps": helper_backend_allowed_ips,
+        },
+        "internal": {
+            "bastionHost": str(servers_cfg.get("bastion", {}).get("private_ip", "")).strip(),
+            "egressHost": egress_private_ip,
+            "dbHost": str(servers_cfg.get("db", {}).get("private_ip", "")).strip(),
+            "grafanaUrl": f"http://{egress_private_ip}:3000",
+            "grafanaPublicUrl": f"https://{grafana_fqdn}" if grafana_fqdn else "",
+            "lokiUrl": f"http://{egress_private_ip}:3100",
+            "lokiPublicUrl": f"https://{loki_fqdn}" if loki_fqdn else "",
+            "infisicalUrl": f"http://{egress_private_ip}:8080",
+            "infisicalPublicUrl": f"https://{infisical_fqdn}" if infisical_fqdn else "",
+            "internalNetworkCidr": str(config.get("private_cidr", "")).strip(),
+            "wgNetworkCidr": helper_backend_allowed_ips[0] if helper_backend_allowed_ips else str(config.get("private_cidr", "")).strip(),
+        },
+        "ssh": {
+            "user": helper_backend_ssh_user,
+            "privateKey": helper_backend_ssh_private_key,
+            "strictHostKeyChecking": "accept-new",
+        },
+    }
+
+    if gh_token and gh_owner and gh_infra_repo:
+        helper_backend_bootstrap_payload["github"] = {
+            "token": gh_token,
+            "owner": gh_owner,
+            "infraRepo": gh_infra_repo,
+            "gitopsRepo": gh_gitops_repo,
+        }
+
+    if s3_endpoint and s3_region and s3_access_key and s3_secret_key:
+        helper_backend_bootstrap_payload["s3"] = {
+            "endpoint": s3_endpoint,
+            "region": s3_region,
+            "accessKeyId": s3_access_key,
+            "secretAccessKey": s3_secret_key,
+            "bucket": require_env("DB_BACKUP_BUCKET"),
+        }
+
+    helper_backend_secrets = {
+        "HELPER_BACKEND_PUBLIC_URL": helper_backend_url,
+        "HELPER_BACKEND_FQDN": helper_backend_fqdn,
+        "HELPER_BACKEND_BOOTSTRAP_JSON_B64": base64.b64encode(
+            json.dumps(helper_backend_bootstrap_payload, separators=(",", ":")).encode("utf-8")
+        ).decode("utf-8"),
+    }
+
     config["bastion_server_type"] = bastion_server_type
+    config["helper_backend_server_type"] = helper_backend_server_type
     config["egress_server_type"] = egress_server_type
     config["db_server_type"] = db_server_type
     config["k3s_node_server_type"] = k3s_node_server_type
@@ -1073,6 +1154,7 @@ def main() -> int:
     config["egress_secrets"] = egress_secrets
     config["bastion_secrets"] = bastion_secrets
     config["db_secrets"] = db_secrets
+    config["helper_backend_secrets"] = helper_backend_secrets
     config["k3s_secrets"] = k3s_secrets
     config["k3s_server_secrets"] = k3s_server_secrets
     config["k3s_agent_secrets"] = k3s_agent_secrets
