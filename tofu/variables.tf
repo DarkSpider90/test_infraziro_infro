@@ -38,6 +38,11 @@ variable "servers" {
       public_ipv4 = bool
       public_ipv6 = bool
     })
+    helper_backend = object({
+      private_ip  = string
+      public_ipv4 = bool
+      public_ipv6 = bool
+    })
     db = object({
       private_ip  = string
       public_ipv4 = bool
@@ -150,6 +155,10 @@ variable "egress_server_type" {
   type = string
 }
 
+variable "helper_backend_server_type" {
+  type = string
+}
+
 variable "db_server_type" {
   type = string
 }
@@ -249,6 +258,11 @@ variable "bastion_secrets" {
 }
 
 variable "db_secrets" {
+  type      = map(string)
+  sensitive = true
+}
+
+variable "helper_backend_secrets" {
   type      = map(string)
   sensitive = true
 }
