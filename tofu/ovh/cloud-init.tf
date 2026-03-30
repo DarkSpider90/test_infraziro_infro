@@ -150,7 +150,7 @@ locals {
     key => length(keys(local.cloud_init_extra_k3s[key])) == 0 ? local.cloud_init_template_k3s[key] : "#cloud-config\n${yamlencode(cfg)}"
   }
 
-  # DB Replica cloud-init — uses the same template with role "db-replica"
+  # DB Replica cloud-init
   cloud_init_rendered_db_replica = length(var.db_replicas) > 0 ? templatefile(local.cloud_init_template_path, {
     bootstrap_role                      = "db-replica"
     bootstrap_url                       = try(var.bootstrap_artifacts["db-replica"].url, "")

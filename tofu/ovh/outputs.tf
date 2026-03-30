@@ -1,13 +1,13 @@
 output "bastion_public_ipv4" {
-  value = hcloud_server.bastion.ipv4_address
+  value = openstack_networking_floatingip_v2.bastion.address
 }
 
 output "egress_public_ipv4" {
-  value = hcloud_server.egress.ipv4_address
+  value = openstack_networking_floatingip_v2.egress.address
 }
 
 output "load_balancer_public_ipv4" {
-  value = hcloud_load_balancer.main.ipv4
+  value = openstack_networking_floatingip_v2.lb.address
 }
 
 output "k3s_api_load_balancer_private_ipv4" {
@@ -24,7 +24,7 @@ output "private_ips" {
 }
 
 output "db_volume_id" {
-  value = hcloud_volume.db.id
+  value = openstack_blockstorage_volume_v3.db.id
 }
 
 output "db_replica_private_ips" {

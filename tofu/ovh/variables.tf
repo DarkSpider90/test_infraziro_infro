@@ -11,11 +11,8 @@ variable "name_prefix" {
 }
 
 variable "location" {
-  type = string
-}
-
-variable "network_zone" {
-  type = string
+  type        = string
+  description = "OVHcloud region (e.g. GRA, SBG, BHS, WAW)"
 }
 
 variable "private_cidr" {
@@ -23,7 +20,8 @@ variable "private_cidr" {
 }
 
 variable "server_image" {
-  type = string
+  type    = string
+  default = "Ubuntu 24.04"
 }
 
 variable "servers" {
@@ -65,11 +63,6 @@ variable "k3s_control_planes_count" {
   validation {
     condition     = contains([1, 3, 5], var.k3s_control_planes_count)
     error_message = "k3s_control_planes_count must be one of: 1, 3, 5."
-  }
-
-  validation {
-    condition     = var.k3s_control_planes_count >= 1 && var.k3s_control_planes_count <= length(var.k3s_nodes)
-    error_message = "k3s_control_planes_count must be between 1 and the number of k3s_nodes."
   }
 }
 
@@ -143,7 +136,8 @@ variable "bootstrap" {
 }
 
 variable "bastion_server_type" {
-  type = string
+  type        = string
+  description = "OVHcloud flavor (e.g. b2-7, b2-15)"
 }
 
 variable "egress_server_type" {
@@ -183,55 +177,30 @@ variable "bastion_cloud_init" {
   type      = string
   default   = ""
   sensitive = true
-
-  validation {
-    condition     = trimspace(var.bastion_cloud_init) == "" || can(merge(yamldecode(var.bastion_cloud_init), {}))
-    error_message = "bastion_cloud_init must be empty or a YAML mapping (cloud-init snippet)."
-  }
 }
 
 variable "egress_cloud_init" {
   type      = string
   default   = ""
   sensitive = true
-
-  validation {
-    condition     = trimspace(var.egress_cloud_init) == "" || can(merge(yamldecode(var.egress_cloud_init), {}))
-    error_message = "egress_cloud_init must be empty or a YAML mapping (cloud-init snippet)."
-  }
 }
 
 variable "db_cloud_init" {
   type      = string
   default   = ""
   sensitive = true
-
-  validation {
-    condition     = trimspace(var.db_cloud_init) == "" || can(merge(yamldecode(var.db_cloud_init), {}))
-    error_message = "db_cloud_init must be empty or a YAML mapping (cloud-init snippet)."
-  }
 }
 
 variable "node_primary_cloud_init" {
   type      = string
   default   = ""
   sensitive = true
-
-  validation {
-    condition     = trimspace(var.node_primary_cloud_init) == "" || can(merge(yamldecode(var.node_primary_cloud_init), {}))
-    error_message = "node_primary_cloud_init must be empty or a YAML mapping (cloud-init snippet)."
-  }
 }
 
 variable "nodes_secondary_cloud_init" {
   type      = string
   default   = ""
   sensitive = true
-
-  validation {
-    condition     = trimspace(var.nodes_secondary_cloud_init) == "" || can(merge(yamldecode(var.nodes_secondary_cloud_init), {}))
-    error_message = "nodes_secondary_cloud_init must be empty or a YAML mapping (cloud-init snippet)."
-  }
 }
 
 variable "wg_server_address" {
@@ -303,7 +272,43 @@ variable "db_replica_secrets" {
   sensitive = true
 }
 
-variable "hcloud_token" {
+# --- OVH-specific credentials ---
+
+variable "ovh_application_key" {
   type      = string
   sensitive = true
+}
+
+variable "ovh_application_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "ovh_consumer_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "ovh_cloud_project_id" {
+  type        = string
+  description = "OVHcloud Public Cloud project service name (UUID)"
+}
+
+variable "openstack_auth_url" {
+  type    = string
+  default = "https://auth.cloud.ovh.net/v3"
+}
+
+variable "openstack_user_name" {
+  type = string
+}
+
+variable "openstack_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "openstack_tenant_id" {
+  type        = string
+  description = "Same as ovh_cloud_project_id for most setups"
 }

@@ -5,7 +5,6 @@ locals {
     if svc.name != "http" && svc.name != "https"
   }
 
-  # Ports that the LB should be able to reach on k3s nodes (NodePort destinations + health checks).
   k3s_lb_ports = toset(
     concat(
       [for svc in var.load_balancer.services : tostring(svc.destination_port)],
@@ -13,8 +12,6 @@ locals {
     )
   )
 
-  # Accept either an IP (10.0.0.1) or CIDR (10.0.0.1/32) in vars; strip CIDR
-  # where an IP is required by the Hetzner API.
   lb_private_ip        = split("/", var.load_balancer.private_ip)[0]
   lb_private_cidr      = can(regex("/", var.load_balancer.private_ip)) ? var.load_balancer.private_ip : "${var.load_balancer.private_ip}/32"
   bastion_cidr         = "${var.servers.bastion.private_ip}/32"
@@ -24,7 +21,6 @@ locals {
   bastion_ssh_cidrs    = length(var.debug_root_password) > 0 ? concat(var.wireguard.allowed_cidrs, ["0.0.0.0/0"]) : var.wireguard.allowed_cidrs
 
   ssh_keys_map = { for idx, key in var.ssh_public_keys : idx => key }
-  ssh_key_ids  = [for key in values(hcloud_ssh_key.ops) : key.id]
 
   k3s_nodes_map            = { for idx, node in var.k3s_nodes : tostring(idx) => node }
   k3s_node_cidrs           = [for node in var.k3s_nodes : "${node.private_ip}/32"]
